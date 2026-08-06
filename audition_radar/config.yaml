@@ -1,0 +1,237 @@
+# ---------------------------------------------------------------------------
+# Audition Radar config
+# Everything tunable lives here. You should never need to edit the .py file
+# except to add a new source *type*.
+# ---------------------------------------------------------------------------
+
+# Create in Discord: Server Settings > Integrations > Webhooks > New Webhook.
+# Point it at a channel that is ONLY for this, so notifications aren't buried.
+#
+# This repo is public -- do NOT paste the real webhook URL here. Set it via
+# the DISCORD_WEBHOOK_URL environment variable instead (it overrides this
+# value at runtime). Leave this blank in git.
+discord_webhook: ""
+
+home:
+  # Fontana, CA
+  lat: 34.0922
+  lon: -117.4350
+  radius_miles: 70
+
+runtime:
+  politeness_seconds: 2.0      # pause between HTTP requests. Don't lower this.
+  enrich_below_chars: 400      # if a listing has less text than this, open it
+
+filters:
+  # A listing must contain at least one of these to be considered at all.
+  include:
+    - vocalist
+    - vocalists
+    - singer
+    - singers
+    - "musical theatre"
+    - "musical theater"
+    - "open call"
+    - audition
+    - principal
+    - "equity principal"
+    - epa
+    - eca
+    - "cruise"
+    - "theme park"
+    - performer
+    - actor
+    - ensemble
+    - "16 bar"
+    - "32 bar"
+
+  # Anything containing these is dropped outright.
+  hard_exclude:
+    - "unpaid"
+    - "no pay"
+    - "non-paying"
+    - "student film"
+    - "class project"
+    - "college program"
+    - "high school"
+    - "children ages"
+    - "must be under 18"
+    - "must be 18-22"
+    - "seeking minors"
+    - "volunteer only"
+
+  # Bumps a listing up the ordering. Doesn't gate anything.
+  boost:
+    - "tenor"
+    - "bari-tenor"
+    - "baritenor"
+    - "baritone"
+    - "pop/rock"
+    - "contemporary"
+    - "paid"
+    - "per week"
+    - "per month"
+    - "salary"
+    - "contract"
+    - "principal"
+    - "video submission"
+    - "self-tape"
+
+  # Gold border in Discord + big score bump. These are the payers.
+  priority_employers:
+    - "royal caribbean"
+    - "norwegian cruise"
+    - "nclh"
+    - "oceania cruises"
+    - "regent seven seas"
+    - "celebrity cruises"
+    - "princess cruises"
+    - "carnival cruise"
+    - "holland america"
+    - "virgin voyages"
+    - "msc cruises"
+    - "cunard"
+    - "p&o cruises"
+    - "seabourn"
+    - "silversea"
+    - "viking ocean"
+    - "viking cruises"
+    - "explora journeys"
+    - "azamara"
+    - "american cruise lines"
+    # Casting agencies that front for the lines. Listings frequently name
+    # the agency and never the cruise line, so these matter as much.
+    - "pearson casting"
+    - "belinda king"
+    - "rws global"
+    - "madorma casting"
+    - "harry blumenau"
+    - "leaveyourlegasea"
+    - "nclh creative"
+    - "carnival entertainment"
+    - "princess cruises entertainment"
+    - "celebrity cruises entertainment"
+    - "disney cruise line"
+    - "disney live entertainment"
+    - "disneyland resort"
+    - "walt disney world"
+    - "universal studios"
+    - "knott's berry farm"
+    - "six flags"
+    - "medieval times"
+    - "cirque du soleil"
+    - "la mirada"
+    - "mccoy rigby"
+    - "musical theatre west"
+    - "3-d theatricals"
+    - "moonlight stage"
+    - "pasadena playhouse"
+    - "center theatre group"
+    - "south coast repertory"
+    - "chance theater"
+    - "candlelight pavilion"
+    - "a noise within"
+
+# ---------------------------------------------------------------------------
+# Sources
+#
+# type: rss   -> just needs a feed url. Durable. Prefer these.
+# type: html  -> CSS selectors. Breaks when a site redesigns; fix the
+#                selector string here, not in the code.
+#
+# The two enabled-by-default sources are the load-bearing ones. Royal
+# Caribbean's own LA call surfaced on Playbill, and AuditionsFree
+# aggregates cruise and regional calls aggressively.
+# ---------------------------------------------------------------------------
+sources:
+
+  - name: "AuditionsFree"
+    type: rss
+    url: "https://www.auditionsfree.com/feed/"
+    max_items: 50
+    enabled: true
+
+  - name: "AuditionsFree — California"
+    type: rss
+    url: "https://www.auditionsfree.com/tag/california/feed/"
+    max_items: 40
+    enabled: true
+
+  - name: "Playbill Jobs — Performer"
+    type: html
+    url: "https://playbill.com/jobs?category=Performer"
+    max_items: 60
+    enabled: true
+    selectors:
+      item: 'a[href*="/job/"]'
+      link: ""          # the item IS the anchor
+
+  - name: "BroadwayWorld — LA Auditions"
+    type: html
+    url: "https://www.broadwayworld.com/losangeles/auditions.cfm"
+    max_items: 40
+    enabled: true
+    selectors:
+      item: 'a[href*="/article/"]'
+      link: ""
+
+  # Cruise-heavy aggregators. These carry lines that never post to Playbill.
+  - name: "Castbee"
+    type: rss
+    url: "https://www.castbee.com/blog-feed.xml"
+    max_items: 40
+    enabled: true
+
+  - name: "Entertainers Worldwide — Singer/Cruise"
+    type: html
+    url: "https://www.entertainersworldwidejobs.com/singer-jobs/cruise-ship"
+    max_items: 40
+    enabled: true
+    selectors:
+      item: 'a[href*="/singer-jobs/"]'
+      link: ""
+
+  - name: "Open Auditions UK — Cruise"
+    type: html
+    url: "https://www.openauditions.uk/cruise"
+    max_items: 30
+    enabled: true
+    selectors:
+      item: 'a[href*="/cruise"]'
+      link: ""
+
+  # --- Needs work before enabling -------------------------------------------
+  # These render their listings with JavaScript, so a plain GET returns an
+  # empty shell. Two ways to fix, in order of effort:
+  #   1. Open the page in Chrome DevTools > Network > XHR, find the JSON
+  #      endpoint the page calls, and point a source at that instead.
+  #   2. Add a Playwright fetcher (pip install playwright && playwright
+  #      install chromium) and a "type: browser" entry in FETCHERS.
+  # Until then, their calls still reach you via Playbill and AuditionsFree,
+  # which is how the Aug 18 LA call surfaced in the first place.
+
+  - name: "Royal Caribbean — Upcoming Auditions"
+    type: html
+    url: "https://royalcaribbeanentertainment.com/productions/upcoming-auditions/"
+    enabled: false
+    selectors:
+      item: ".audition-card"
+      link: "a"
+      title: ".audition-title"
+      location: ".audition-location"
+
+  - name: "Disney Auditions"
+    type: html
+    url: "https://jobs.disneycareers.com/auditions"
+    enabled: false
+    selectors:
+      item: ".job-listing"
+      link: "a"
+
+  - name: "Actors' Equity Casting Call"
+    type: html
+    url: "https://castingcall.actorsequity.org/"
+    enabled: false
+    selectors:
+      item: ".casting-notice"
+      link: "a"
