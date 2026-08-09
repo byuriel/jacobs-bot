@@ -2,7 +2,8 @@ name: Audition Radar
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # 14:00 UTC = 7:00 AM Pacific Daylight Time (6:00 AM when PST is in effect)
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       mode:

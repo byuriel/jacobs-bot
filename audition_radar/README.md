@@ -83,13 +83,14 @@ time:
 
 ### 6. Let the schedule take over
 
-`.github/workflows/audition-radar.yml` runs `mode: run` every 30 minutes
-automatically once merged to `main` — nothing further to do. Confirm it's actually
-firing under the repo's **Actions** tab.
+`.github/workflows/audition-radar.yml` runs `mode: run` once a day, at 14:00 UTC
+(7 AM Pacific), automatically once merged to `main` — nothing further to do. Confirm
+it's actually firing under the repo's **Actions** tab.
 
-Thirty minutes is the right cadence. Appointment-only calls fill in days, not minutes,
-and hammering these sites gets the runner's IP blocked — which is a self-inflicted
-outage.
+Once a day is plenty. Appointment-only calls fill in days, not minutes, and
+hammering these sites more often than that gets the runner's IP blocked — which is
+a self-inflicted outage. To change the cadence, edit the `cron:` line in the
+workflow file (GitHub Actions cron is UTC).
 
 ### Local dev / testing
 
