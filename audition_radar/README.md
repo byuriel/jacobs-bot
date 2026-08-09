@@ -183,12 +183,21 @@ New Jersey.
 Note the total-failure heartbeat does **not** cover this: it only fires when every
 source dies. Four dead out of seven stays silent indefinitely.
 
-**Related filter bug:** most out-of-region in-person calls (NYC ECCs, Boston and
-Texas EPAs) pass as `REMOTE / VIDEO`. `REMOTE_PATTERNS` contains generic phrases
-("email your", "casting profile", "submit your materials") that are matched against
-the *full enriched page text*, so Playbill's boilerplate rescues nearly everything.
-Fix by tightening those patterns and/or running remote-detection on the original
-summary rather than the enriched blob.
+**Fixed since:** out-of-region in-person calls used to pass as `REMOTE / VIDEO`
+because `REMOTE_PATTERNS` was matched against the full enriched page text, and a
+Playbill detail page carries a sidebar of other jobs. Remote detection now reads
+`Listing.own_blob()` (title + location + summary only). Measured across the same
+source set: **28 of 46 hits were `REMOTE / VIDEO`, now 4 of 33** — and all four
+remaining ones really are virtual calls.
+
+**Still noisy: `UNMAPPED LOCATION` is now the biggest category (21 of 33).** These
+are listings whose location can't be parsed into `city, ST` — "NJ Local
+Auditions", "NYC EPA", "Broward County" — so they can't be rejected and fire
+through the fail-open hatch. Options, none of them free: extend `CITY_STATE_RE` to
+recognise bare state abbreviations and metro nicknames, or require an `UNMAPPED`
+listing to also name a priority employer or vocal keyword before it fires. The
+second is a real change in policy, since the filter is deliberately built to fail
+open.
 
 **Be polite.** `politeness_seconds` is set to 2. Don't lower it. Getting the runner's
 IP banned from Playbill costs more than it saves.
