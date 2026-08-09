@@ -1,0 +1,61 @@
+name: Audition Radar
+
+on:
+  schedule:
+    # 14:00 UTC = 7:00 AM Pacific Daylight Time (6:00 AM when PST is in effect)
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode"
+        required: true
+        default: "run"
+        type: choice
+        options:
+          - run
+          - dry-run
+          - backfill
+          - test-discord
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audition-radar
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 feedparser pyyaml
+
+      - name: Run radar
+        working-directory: audition_radar
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MODE: ${{ github.event.inputs.mode || 'run' }}
+        run: |
+          case "$MODE" in
+            dry-run) python3 audition_radar.py --dry-run -v ;;
+            backfill) python3 audition_radar.py --backfill -v ;;
+            test-discord) python3 audition_radar.py --test-discord ;;
+            *) python3 audition_radar.py -v ;;
+          esac
+
+      - name: Commit updated seen.sqlite3
+        if: ${{ github.event.inputs.mode != 'dry-run' && github.event.inputs.mode != 'test-discord' }}
+        working-directory: audition_radar
+        run: |
+          git config user.name "audition-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add seen.sqlite3
+          git diff --cached --quiet || git commit -m "radar: update seen listings [skip ci]"
+          git push
