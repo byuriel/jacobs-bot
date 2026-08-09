@@ -90,6 +90,28 @@ FIXTURES = [
         url="https://example.com/moonlight-vocal",
         source="BroadwayWorld",
         summary="Seeking singers for the 2026 season. San Diego, CA. Paid contract.")),
+
+    # Enriched-text contamination. This listing is in-person in Fort Worth, but
+    # its detail page carries a sidebar advertising a *different* call that
+    # takes video submissions. Before remote detection was narrowed to
+    # own_blob(), that sidebar made this fire as REMOTE / VIDEO.
+    (False, Listing(
+        title="A Christmas Carol — Fort Worth, TX EPA (08.23.26)",
+        url="https://example.com/fort-worth-epa",
+        source="Playbill",
+        summary="Equity Principal Audition. Fort Worth, TX. In person, by appointment.",
+        enriched=("More jobs on Playbill: Inter Alia (Broadway) — Equity video "
+                  "submissions. Virtual Auditions for a new musical. Self-tape "
+                  "accepted. Submit a video today."))),
+
+    # The mirror case: the listing itself is virtual, so it must still fire
+    # even though its own summary is all we now trust.
+    (True, Listing(
+        title="Norwegian Cruise Line — Virtual Auditions for Vocalists",
+        url="https://example.com/ncl-virtual",
+        source="Castbee",
+        summary=("Seeking vocalists. Virtual auditions; video submission "
+                 "accepted from anywhere. Paid contract, per week."))),
 ]
 
 
@@ -119,7 +141,10 @@ def main():
     print("-" * 100)
     for expected, listing in FIXTURES:
         v = relevance_check(listing.blob(), cfg)
-        g = geo_check(listing.blob(), HOME, R) if v.keep else None
+        # Mirror run(): places come from the full blob, remote detection only
+        # from what the listing says about itself.
+        g = (geo_check(listing.blob(), HOME, R, remote_text=listing.own_blob())
+             if v.keep else None)
         fired = bool(v.keep and g and g.matched)
         status = "PASS" if fired == expected else "**FAIL**"
         if fired != expected:
@@ -148,7 +173,8 @@ def main():
 
     # --- discord payload ---
     l0 = FIXTURES[0][1]
-    embed = build_embed(l0, geo_check(l0.blob(), HOME, R),
+    embed = build_embed(l0, geo_check(l0.blob(), HOME, R,
+                                      remote_text=l0.own_blob()),
                         relevance_check(l0.blob(), cfg))
     print("sample Discord embed:")
     print(json.dumps(embed, indent=2)[:900])

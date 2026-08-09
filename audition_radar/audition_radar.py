@@ -175,6 +175,48 @@ CITIES = {
     "baltimore, md": (39.2904, -76.6122),
     "toronto, on": (43.6532, -79.3832),
     "london, uk": (51.5074, -0.1278),
+    # Added after the first live runs. Every one of these showed up as
+    # UNMAPPED LOCATION and therefore fired through the fail-open escape
+    # hatch -- 12 of 46 hits in one run were unmappable places, all of them
+    # thousands of miles away. Naming them is what lets them be rejected.
+    "fort worth, tx": (32.7555, -97.3308),
+    "arlington, tx": (32.7357, -97.1081),
+    "san antonio, tx": (29.4241, -98.4936),
+    "concord, ma": (42.4604, -71.3489),
+    "worcester, ma": (42.2626, -71.8023),
+    "astoria, ny": (40.7644, -73.9235),
+    "queens, ny": (40.7282, -73.7949),
+    "bronx, ny": (40.8448, -73.8648),
+    "cape may, nj": (38.9351, -74.9060),
+    "newark, nj": (40.7357, -74.1724),
+    "jersey city, nj": (40.7178, -74.0431),
+    "princeton, nj": (40.3573, -74.6672),
+    "wilmington, de": (39.7391, -75.5398),
+    "baton rouge, la": (30.4515, -91.1871),
+    "lexington, sc": (33.9815, -81.2362),
+    "columbia, sc": (34.0007, -81.0348),
+    "charleston, sc": (32.7765, -79.9311),
+    "titusville, fl": (28.6122, -80.8076),
+    "coconut creek, fl": (26.2518, -80.1789),
+    "sarasota, fl": (27.3364, -82.5307),
+    "jacksonville, fl": (30.3322, -81.6557),
+    "west palm beach, fl": (26.7153, -80.0534),
+    "peoria, az": (33.5806, -112.2374),
+    "tucson, az": (32.2226, -110.9747),
+    "shakopee, mn": (44.7974, -93.5269),
+    "milwaukee, wi": (43.0389, -87.9065),
+    "indianapolis, in": (39.7684, -86.1581),
+    "columbus, oh": (39.9612, -82.9988),
+    "cincinnati, oh": (39.1031, -84.5120),
+    "louisville, ky": (38.2527, -85.7585),
+    "memphis, tn": (35.1495, -90.0490),
+    "richmond, va": (37.5407, -77.4360),
+    "raleigh, nc": (35.7796, -78.6382),
+    "albuquerque, nm": (35.0844, -106.6504),
+    "spokane, wa": (47.6588, -117.4260),
+    "tacoma, wa": (47.2529, -122.4443),
+    "eugene, or": (44.0521, -123.0868),
+    "reno, nv": (39.5296, -119.8138),
 }
 
 STATE_ABBR = {
@@ -233,7 +275,7 @@ class GeoVerdict:
     miles: float = 0.0
 
 
-def geo_check(text, home, radius_miles):
+def geo_check(text, home, radius_miles, remote_text=None):
     """
     Decide whether a listing is geographically relevant.
 
@@ -242,8 +284,14 @@ def geo_check(text, home, radius_miles):
       2. Accepts remote / video submission (geography is irrelevant).
       3. Names no place at all -> pass, flagged UNKNOWN. Better a false
          positive he glances at than a missed call.
+
+    `text` is the full blob -- more context makes place extraction better.
+    `remote_text` is the narrower "what this listing says about itself" view
+    used only for the remote/video test, so a sidebar of other listings on the
+    detail page can't make an in-person call look self-submittable. Defaults to
+    `text` when not supplied.
     """
-    lower = (text or "").lower()
+    lower = (remote_text if remote_text is not None else text or "").lower()
 
     places = extract_places(text)
     known = [(p, CITIES[p]) for p in places if p in CITIES]
@@ -328,6 +376,10 @@ class Listing:
     summary: str = ""
     location: str = ""
     posted: str = ""
+    # Detail-page text pulled in by enrich(). Kept separate from `summary`
+    # rather than concatenated onto it, because the two are trusted for
+    # different questions -- see own_blob().
+    enriched: str = ""
 
     def key(self):
         u = urlparse(self.url)
@@ -337,6 +389,21 @@ class Listing:
         return hashlib.sha256(canon.encode()).hexdigest()[:32]
 
     def blob(self):
+        """Everything we know. Used for relevance scoring and place lookup,
+        where more context is strictly better."""
+        return " \n ".join([self.title, self.location, self.summary, self.enriched])
+
+    def own_blob(self):
+        """Only what this listing says about itself.
+
+        A detail page carries site chrome and a sidebar of *other* listings, so
+        a phrase like "video submissions" found anywhere in the enriched text
+        might belong to a neighbouring call rather than this one. That is what
+        made Fort Worth and Concord MA EPAs read as REMOTE / VIDEO. Remote
+        detection is judged on this narrower text; in practice genuinely remote
+        calls announce it in their own title ("Virtual Auditions for...",
+        "Equity video submissions"), so little is lost.
+        """
         return " \n ".join([self.title, self.location, self.summary])
 
 
@@ -424,7 +491,7 @@ def enrich(listing, cfg):
     try:
         r = http_get(listing.url, timeout=20)
         text = BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
-        listing.summary = (listing.summary + " \n " + text)[:6000]
+        listing.enriched = text[:6000]
         time.sleep(cfg["runtime"]["politeness_seconds"])
     except Exception as e:
         log.debug("enrich failed for %s: %s", listing.url, e)
@@ -605,7 +672,8 @@ def run(args):
                 mark_seen(con, listing)
                 continue
 
-        geo = geo_check(listing.blob(), home, radius)
+        geo = geo_check(listing.blob(), home, radius,
+                        remote_text=listing.own_blob())
         if not geo.matched:
             mark_seen(con, listing)
             continue
