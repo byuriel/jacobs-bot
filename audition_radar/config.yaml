@@ -134,6 +134,43 @@ filters:
     - "candlelight pavilion"
     - "a noise within"
 
+  # --- Cruise focus ---------------------------------------------------------
+
+  # Cruise lines cast globally on rolling contracts. A Royal Caribbean or
+  # Princess call whose audition stop happens to be in London still tells him
+  # that line is casting vocalists right now, and most accept video from
+  # anywhere. Without this, every listing from Open Auditions UK is thrown
+  # away as OUT OF RADIUS -- which is exactly what was happening: 4 cruise
+  # listings fetched, 0 delivered.
+  priority_employer_ignores_radius: true
+
+  # The geo filter deliberately fails open when it cannot parse a location.
+  # Sound in principle, but 21 of 33 hits in one run were unmappable places
+  # thousands of miles away -- "NJ Local Auditions", "Broward County",
+  # background-extra and game-show casting. When true, an unmappable listing
+  # must ALSO look like the work being hunted: a priority employer, or one of
+  # signal_terms below. Set false to restore the original fail-open behaviour.
+  require_signal_when_location_unknown: true
+
+  signal_terms:
+    - vocalist
+    - vocalists
+    - singer
+    - singers
+    - "sings"
+    - tenor
+    - baritone
+    - "bari-tenor"
+    - cruise
+    - "cruise ship"
+    - "theme park"
+    - "musical theatre"
+    - "musical theater"
+    - "video submission"
+    - "self-tape"
+    - "16 bar"
+    - "32 bar"
+
 # ---------------------------------------------------------------------------
 # Sources
 #
@@ -151,13 +188,13 @@ sources:
     type: rss
     url: "https://www.auditionsfree.com/feed/"
     max_items: 50
-    enabled: true
+    enabled: false
 
   - name: "AuditionsFree — California"
     type: rss
     url: "https://www.auditionsfree.com/tag/california/feed/"
     max_items: 40
-    enabled: true
+    enabled: false
 
   # The reason this project exists. AuditionsFree tags cruise line calls, and
   # this feed is where "Cruise Line Singer & Dancer Auditions in Los Angeles"
@@ -166,13 +203,13 @@ sources:
     type: rss
     url: "https://www.auditionsfree.com/tag/cruise-line-auditions/feed/"
     max_items: 40
-    enabled: true
+    enabled: false
 
   - name: "AuditionsFree — Cruise Ship Jobs"
     type: rss
     url: "https://www.auditionsfree.com/tag/cruise-ship-jobs/feed/"
     max_items: 40
-    enabled: true
+    enabled: false
 
   - name: "Playbill Jobs — Performer"
     type: html

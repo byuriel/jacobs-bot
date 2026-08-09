@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yaml
 from audition_radar import (Listing, geo_check, relevance_check, build_embed,
                             haversine_miles, extract_places, db_connect,
-                            is_new, mark_seen)
+                            is_new, mark_seen, decide)
 
 cfg = yaml.safe_load(open(Path(__file__).parent / "config.yaml"))
 HOME = (cfg["home"]["lat"], cfg["home"]["lon"])
@@ -112,6 +112,27 @@ FIXTURES = [
         source="Castbee",
         summary=("Seeking vocalists. Virtual auditions; video submission "
                  "accepted from anywhere. Paid contract, per week."))),
+
+    # priority_employer_ignores_radius. A real Open Auditions UK listing:
+    # London is 5,400 mi away and the index text says nothing about video, so
+    # plain geo drops it. But it is Royal Caribbean casting vocalists, which is
+    # the entire point of the tool, so it must fire as PRIORITY EMPLOYER.
+    (True, Listing(
+        title=("CRUISE - Vocalists & Dancers, Signature Production Shows, "
+               "Royal Caribbean"),
+        url="https://www.openauditions.uk/cruise-vocalists-dancers-royal-caribbean",
+        source="Open Auditions UK — Cruise",
+        summary="Open audition for vocalists. London, UK. Paid contract.")),
+
+    # require_signal_when_location_unknown. Passes the include filter on
+    # "open call" and has no parseable city, so the old fail-open fired it.
+    # Nothing about it is singing work, so it must now drop.
+    (False, Listing(
+        title="Paid Background Extras — open call",
+        url="https://example.com/extras-broward",
+        source="Castbee",
+        summary=("Open call for paid background extras on a TV show. Broward "
+                 "County. No experience needed."))),
 ]
 
 
@@ -140,12 +161,9 @@ def main():
     print(f"{'FIRE?':<7}{'EXPECT':<8}{'SCORE':<7}{'GEO':<22}TITLE")
     print("-" * 100)
     for expected, listing in FIXTURES:
-        v = relevance_check(listing.blob(), cfg)
-        # Mirror run(): places come from the full blob, remote detection only
-        # from what the listing says about itself.
-        g = (geo_check(listing.blob(), HOME, R, remote_text=listing.own_blob())
-             if v.keep else None)
-        fired = bool(v.keep and g and g.matched)
+        # decide() is what run() calls, so the suite cannot drift from
+        # production the way it did when this called geo_check directly.
+        fired, g, v = decide(listing, cfg, HOME, R)
         status = "PASS" if fired == expected else "**FAIL**"
         if fired != expected:
             ok = False

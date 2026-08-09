@@ -498,6 +498,49 @@ def enrich(listing, cfg):
     return listing
 
 
+def decide(listing, cfg, home, radius):
+    """The whole keep/drop decision for one listing.
+
+    Returns (fired, geo, verdict).
+
+    Deliberately the single source of truth: run() and test_offline.py both
+    call this. An earlier version had the test calling geo_check with
+    different arguments than production, so a real regression passed the
+    suite. Enrichment is the caller's job -- it needs network.
+    """
+    verdict = relevance_check(listing.blob(), cfg)
+    if not verdict.keep:
+        return False, None, verdict
+
+    geo = geo_check(listing.blob(), home, radius,
+                    remote_text=listing.own_blob())
+
+    f = cfg["filters"]
+    is_priority = "PRIORITY EMPLOYER" in verdict.tags
+
+    # A cruise line casting anywhere is news worth having: contracts are
+    # global and rolling, and most lines take video from anywhere. Without
+    # this, every Royal Caribbean / Princess / Celebrity call sourced from a
+    # UK listing board dies as OUT OF RADIUS -- 4 fetched, 0 delivered.
+    if (not geo.matched and is_priority
+            and f.get("priority_employer_ignores_radius", True)):
+        geo = GeoVerdict(True, "PRIORITY EMPLOYER", geo.place, geo.miles)
+
+    # Narrow the fail-open hatch. An unplaceable listing still fires, but only
+    # if it looks like this kind of work -- otherwise background-extra and
+    # game-show casting from across the country crowds out the signal.
+    if (geo.matched
+            and geo.reason in ("UNMAPPED LOCATION", "LOCATION UNKNOWN")
+            and f.get("require_signal_when_location_unknown", True)
+            and not is_priority):
+        low = listing.blob().lower()
+        if not any(t.lower() in low for t in f.get("signal_terms", [])):
+            log.debug("dropped unplaceable, no signal: %s", listing.title[:70])
+            return False, geo, verdict
+
+    return geo.matched, geo, verdict
+
+
 FETCHERS = {"rss": fetch_rss, "html": fetch_html}
 
 
@@ -667,14 +710,9 @@ def run(args):
         # Thin listing + plausible hit -> go read the detail page.
         if len(listing.blob()) < cfg["runtime"]["enrich_below_chars"]:
             enrich(listing, cfg)
-            verdict = relevance_check(listing.blob(), cfg)
-            if not verdict.keep:
-                mark_seen(con, listing)
-                continue
 
-        geo = geo_check(listing.blob(), home, radius,
-                        remote_text=listing.own_blob())
-        if not geo.matched:
+        fired, geo, verdict = decide(listing, cfg, home, radius)
+        if not fired:
             mark_seen(con, listing)
             continue
 
