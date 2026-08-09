@@ -77,11 +77,15 @@ def main():
     # --- distance sanity ---
     d_la = haversine_miles(*HOME, 34.0522, -118.2437)
     d_sd = haversine_miles(*HOME, 32.7157, -117.1611)
+    d_ven = haversine_miles(*HOME, 34.2746, -119.2290)
     d_chi = haversine_miles(*HOME, 41.8781, -87.6298)
     print(f"Fontana -> Los Angeles : {d_la:6.1f} mi  (expect ~46, in radius)")
-    print(f"Fontana -> San Diego   : {d_sd:6.1f} mi  (expect ~95, OUT of radius)")
-    print(f"Fontana -> Chicago     : {d_chi:6.1f} mi  (expect ~1,740)")
-    assert d_la < R and d_sd > R and d_chi > 1500
+    print(f"Fontana -> San Diego   : {d_sd:6.1f} mi  (expect ~96, in radius)")
+    print(f"Fontana -> Ventura     : {d_ven:6.1f} mi  (expect ~103, OUT of radius)")
+    print(f"Fontana -> Chicago     : {d_chi:6.1f} mi  (expect ~1,700)")
+    # Ventura is the nearest mapped city outside the radius -- it guards the
+    # boundary, so widening the radius without updating this test fails loudly.
+    assert d_la < R and d_sd < R and d_ven > R and d_chi > 1500
     print()
 
     print("place extraction:", extract_places(

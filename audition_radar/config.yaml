@@ -16,7 +16,9 @@ home:
   # Fontana, CA
   lat: 34.0922
   lon: -117.4350
-  radius_miles: 70
+  # 100 covers San Diego (96.4 mi). Escondido, Valencia, Thousand Oaks and
+  # Oxnard also fall inside; Ventura (103.3) is the nearest city still outside.
+  radius_miles: 100
 
 runtime:
   politeness_seconds: 2.0      # pause between HTTP requests. Don't lower this.

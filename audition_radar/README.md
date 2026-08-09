@@ -1,6 +1,6 @@
 # Audition Radar
 
-Polls audition listing sources, filters to **70 miles of Fontana, CA** *plus* anything
+Polls audition listing sources, filters to **100 miles of Fontana, CA** *plus* anything
 that accepts video submission, de-duplicates against a local database, and pushes new
 calls to a Discord channel. Every listing fires exactly once, ever.
 
@@ -8,7 +8,7 @@ calls to a Discord channel. Every listing fires exactly once, ever.
 
 ## The one design decision worth arguing about
 
-A strict 70-mile geofence would have filtered out the single best-paying opportunity
+A strict 100-mile geofence would have filtered out the single best-paying opportunity
 on his map. Norwegian pays vocalists $1,300/week and casts by emailed reel — no
 geography at all. Royal Caribbean takes online profile submissions from anywhere.
 A radius filter alone throws those in the trash.
@@ -17,7 +17,7 @@ So a listing fires if **any** of these is true:
 
 | Verdict | Meaning | Color in Discord |
 |---|---|---|
-| `IN RADIUS` | Names a city within 70 mi of Fontana | Green |
+| `IN RADIUS` | Names a city within 100 mi of Fontana | Green |
 | `REMOTE / VIDEO` | Self-tape, reel submission, online profile — location irrelevant | Blue |
 | `LOCATION UNKNOWN` / `UNMAPPED` | Couldn't place it. Fires anyway. | Grey |
 | `PRIORITY EMPLOYER` | Royal Caribbean, NCLH, Disney, Universal, etc. | **Gold** |
@@ -25,7 +25,7 @@ So a listing fires if **any** of these is true:
 That last grey case is deliberate. A false positive costs three seconds of glancing
 at a phone. A false negative costs a booking. The filter fails open.
 
-Anything that names a real city outside 70 miles **and** requires in-person attendance
+Anything that names a real city outside 100 miles **and** requires in-person attendance
 gets dropped silently.
 
 ---
@@ -161,12 +161,34 @@ real. Worth fixing option 1 when there's an afternoon.
 Access in particular is where Royal Caribbean routes invited appointments — he should
 have a profile there regardless of this tool, and check it himself.
 
-**Sources were not live-tested from here.** Neither the Claude session that wrote
-this nor the one that wired up GitHub Actions had outbound access to those domains,
-so the geo math, filtering, dedup, and Discord payload construction are all verified
-against fixtures, but the HTML selectors for Playbill and BroadwayWorld are
-best-guess and may need adjusting on first real run. Run `mode: dry-run` from the
-Actions tab first and check that the item counts are non-zero.
+**KNOWN BROKEN: 4 of the 7 enabled sources are dead.** First live `dry-run` on
+GitHub Actions (2026-08-09) returned:
+
+| Source | Result |
+|---|---|
+| AuditionsFree | ❌ HTTP 500 |
+| AuditionsFree — California | ❌ feed unparseable |
+| Playbill Jobs — Performer | ✅ 60 items |
+| BroadwayWorld — LA Auditions | ❌ 404 — config URL is `.cfm`, the live page is `.php` |
+| Castbee | ✅ 20 items |
+| Entertainers Worldwide — Cruise | ✅ 40 items |
+| Open Auditions UK — Cruise | ❌ 404 |
+
+This matters more than the count suggests. **AuditionsFree was the cruise-heavy
+aggregator and BroadwayWorld LA was the only SoCal-specific source** — with both
+down, that run produced 48 hits containing *zero* `IN RADIUS` results and *zero*
+cruise line or casting agency calls. The top-scored hit was a Six Flags call in
+New Jersey.
+
+Note the total-failure heartbeat does **not** cover this: it only fires when every
+source dies. Four dead out of seven stays silent indefinitely.
+
+**Related filter bug:** most out-of-region in-person calls (NYC ECCs, Boston and
+Texas EPAs) pass as `REMOTE / VIDEO`. `REMOTE_PATTERNS` contains generic phrases
+("email your", "casting profile", "submit your materials") that are matched against
+the *full enriched page text*, so Playbill's boilerplate rescues nearly everything.
+Fix by tightening those patterns and/or running remote-detection on the original
+summary rather than the enriched blob.
 
 **Be polite.** `politeness_seconds` is set to 2. Don't lower it. Getting the runner's
 IP banned from Playbill costs more than it saves.
