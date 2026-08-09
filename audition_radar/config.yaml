@@ -159,6 +159,21 @@ sources:
     max_items: 40
     enabled: true
 
+  # The reason this project exists. AuditionsFree tags cruise line calls, and
+  # this feed is where "Cruise Line Singer & Dancer Auditions in Los Angeles"
+  # type posts land. Highest-value feed in the file.
+  - name: "AuditionsFree — Cruise Lines"
+    type: rss
+    url: "https://www.auditionsfree.com/tag/cruise-line-auditions/feed/"
+    max_items: 40
+    enabled: true
+
+  - name: "AuditionsFree — Cruise Ship Jobs"
+    type: rss
+    url: "https://www.auditionsfree.com/tag/cruise-ship-jobs/feed/"
+    max_items: 40
+    enabled: true
+
   - name: "Playbill Jobs — Performer"
     type: html
     url: "https://playbill.com/jobs?category=Performer"
@@ -168,13 +183,26 @@ sources:
       item: 'a[href*="/job/"]'
       link: ""          # the item IS the anchor
 
+  # Old URL (/losangeles/auditions.cfm) redirected to a .php that 404s. This is
+  # the current path.
   - name: "BroadwayWorld — LA Auditions"
     type: html
-    url: "https://www.broadwayworld.com/losangeles/auditions.cfm"
+    url: "https://www.broadwayworld.com/auditions/Los-Angeles-CA"
     max_items: 40
     enabled: true
     selectors:
-      item: 'a[href*="/article/"]'
+      item: 'a[href*="/auditions/"]'
+      link: ""
+
+  # Virtual/self-submit calls have no geography, which is the whole lane that
+  # matters for cruise work from Fontana.
+  - name: "BroadwayWorld — Virtual Auditions"
+    type: html
+    url: "https://www.broadwayworld.com/auditions/Virtual"
+    max_items: 40
+    enabled: true
+    selectors:
+      item: 'a[href*="/auditions/"]'
       link: ""
 
   # Cruise-heavy aggregators. These carry lines that never post to Playbill.
@@ -193,9 +221,14 @@ sources:
       item: 'a[href*="/singer-jobs/"]'
       link: ""
 
+  # There is no /cruise index page -- listings live at /cruise-<slug> and are
+  # indexed from /blog ("Current Castings"). The href filter keeps this to the
+  # cruise posts. UK-based, so most will read OUT OF RADIUS unless the listing
+  # accepts video, which cruise lines routinely do; the ones that matter name
+  # Royal Caribbean, Princess, Celebrity, P&O and Disney Cruise Line.
   - name: "Open Auditions UK — Cruise"
     type: html
-    url: "https://www.openauditions.uk/cruise"
+    url: "https://www.openauditions.uk/blog"
     max_items: 30
     enabled: true
     selectors:

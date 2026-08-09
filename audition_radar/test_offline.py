@@ -68,6 +68,28 @@ FIXTURES = [
         source="Playbill",
         summary=("Seeking vocalists for Disneyland Resort. Anaheim, CA. "
                  "Paid, AGVA agreement."))),
+
+    # Regression guard. In the first live run, out-of-region in-person calls
+    # like this were firing as REMOTE / VIDEO because REMOTE_PATTERNS matched
+    # generic page boilerplate ("email your", "submit your materials",
+    # "casting profile") in the enriched text. Names a real city 2,400 mi away
+    # and is in-person only, so it must be dropped. If this starts passing,
+    # someone has loosened REMOTE_PATTERNS again.
+    (False, Listing(
+        title="Other World — NYC ECC Singers (All Genders)",
+        url="https://example.com/nyc-ecc-singers",
+        source="Playbill",
+        summary=("Equity Chorus Call for singers. New York, NY. Prepare 32 "
+                 "bars of a contemporary song. Please email your headshot and "
+                 "resume to the casting office, or submit your materials at "
+                 "the door. Create a casting profile to apply."))),
+
+    # San Diego moved inside the radius when it widened to 100 mi (96.4 mi).
+    (True, Listing(
+        title="Moonlight Stage Productions — Vocalist Auditions",
+        url="https://example.com/moonlight-vocal",
+        source="BroadwayWorld",
+        summary="Seeking singers for the 2026 season. San Diego, CA. Paid contract.")),
 ]
 
 

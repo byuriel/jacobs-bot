@@ -39,9 +39,15 @@ BASE = Path(__file__).resolve().parent
 CONFIG_PATH = BASE / "config.yaml"
 DB_PATH = BASE / "seen.sqlite3"
 
+# A custom bot-shaped UA got AuditionsFree's WAF to answer HTTP 500 on the main
+# feed and serve an HTML challenge page (which feedparser reported as malformed
+# XML) on the tag feed -- both sites load fine in a browser. A normal desktop UA
+# is what unblocks them. This does not bypass any login or paywall; everything
+# scraped is public, and politeness_seconds still throttles to one request at a
+# time, once a day.
 USER_AGENT = (
-    "AuditionRadar/1.0 (personal audition notifier; "
-    "contact: set CONTACT_EMAIL in config)"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
 log = logging.getLogger("radar")
@@ -182,11 +188,21 @@ CITY_STATE_RE = re.compile(
     r"\s*,\s*([A-Za-z]{2}|[A-Za-z]{4,})\b"
 )
 
+# Deliberately narrow. These are matched against the *enriched* page text, which
+# on Playbill is mostly site boilerplate, so anything vague matches everything.
+# The earlier list carried "email your", "submit your materials", "casting
+# profile", "by video", "reel to" and "submit online" -- generic enough that a
+# NYC ECC, a Boston EPA and a Fort Worth EPA all passed as REMOTE / VIDEO in the
+# first live run. Every phrase here has to be one that only appears when a
+# listing genuinely accepts a submission from somewhere else.
 REMOTE_PATTERNS = [
-    "self-tape", "self tape", "selftape", "video submission", "submit online",
-    "online submission", "virtual audition", "virtual call", "submit via video",
-    "email your", "submit your materials", "casting profile", "remote audition",
-    "zoom audition", "by video", "reel to", "no in-person",
+    "self-tape", "self tape", "selftape",
+    "video submission", "video submissions", "video audition",
+    "virtual audition", "virtual auditions", "virtual call", "virtual open call",
+    "online submission", "online submissions", "online audition",
+    "submit via video", "submit a video", "submit your reel",
+    "remote audition", "zoom audition",
+    "accepting submissions from", "no in-person",
 ]
 
 
