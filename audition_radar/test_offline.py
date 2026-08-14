@@ -133,6 +133,43 @@ FIXTURES = [
         source="Castbee",
         summary=("Open call for paid background extras on a TV show. Broward "
                  "County. No experience needed."))),
+
+    # The ping the radius exemption caused. Six Flags is a priority employer,
+    # so exempting *every* priority employer from the radius made a New Jersey
+    # theme park job arrive gold-bordered. Only cruise work is
+    # location-independent; a park job is a job in that park's city.
+    (False, Listing(
+        title=("Six Flags Holiday in the Park — NJ Local Auditions: Singers, "
+               "Actors, Dancers"),
+        url="https://example.com/six-flags-nj",
+        source="Playbill",
+        summary=("Paid seasonal performer contracts. New Jersey. Local "
+                 "auditions, in person."))),
+
+    # Names no city we have coordinates for, so it used to sail through as
+    # LOCATION UNKNOWN. The state name alone is enough to reject it.
+    (False, Listing(
+        title="Paid Extras Needed for a series shooting in Tennessee",
+        url="https://example.com/tn-extras",
+        source="Castbee",
+        summary="Open call for performers. Tennessee. Paid day rate.")),
+
+    # A far-away call that says "virtual" is still a far-away call. This used
+    # to be rescued as REMOTE / VIDEO.
+    (False, Listing(
+        title="Virtual Auditions — Seattle Public Theater",
+        url="https://example.com/seattle-virtual",
+        source="Playbill",
+        summary=("Virtual auditions for singers. Seattle, WA. Video "
+                 "submission accepted."))),
+
+    # But a cruise call with no city still fires, wherever it is run from.
+    (True, Listing(
+        title="Cruise ship vocalists wanted — production show cast",
+        url="https://example.com/generic-cruise",
+        source="Entertainers Worldwide — Singer/Cruise",
+        summary=("Seeking cruise ship vocalists for production shows. "
+                 "Contracts 6 months. Paid per week."))),
 ]
 
 

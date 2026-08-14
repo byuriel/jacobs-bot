@@ -136,13 +136,47 @@ filters:
 
   # --- Cruise focus ---------------------------------------------------------
 
-  # Cruise lines cast globally on rolling contracts. A Royal Caribbean or
-  # Princess call whose audition stop happens to be in London still tells him
-  # that line is casting vocalists right now, and most accept video from
-  # anywhere. Without this, every listing from Open Auditions UK is thrown
-  # away as OUT OF RADIUS -- which is exactly what was happening: 4 cruise
-  # listings fetched, 0 delivered.
   priority_employer_ignores_radius: true
+
+  # ONLY these ignore the radius, and the distinction matters. Cruise work is
+  # location-independent -- you fly to the ship, so a Miami or London audition
+  # stop is still a job he can take. A theme park or regional theatre call is
+  # a job *in that city*: "Six Flags Holiday in the Park -- NJ Local
+  # Auditions" is work in New Jersey, and exempting it from the radius (which
+  # an earlier version did, by exempting every priority employer) is how
+  # out-of-state pings started arriving.
+  #
+  # The bare word "cruise" is here on purpose: plenty of real listings say
+  # "cruise ship vocalist" without ever naming the line or the agency.
+  radius_exempt:
+    - "cruise"
+    - "royal caribbean"
+    - "norwegian cruise"
+    - "nclh"
+    - "oceania cruises"
+    - "regent seven seas"
+    - "celebrity cruises"
+    - "princess cruises"
+    - "carnival cruise"
+    - "holland america"
+    - "virgin voyages"
+    - "msc cruises"
+    - "cunard"
+    - "p&o cruises"
+    - "seabourn"
+    - "silversea"
+    - "viking ocean"
+    - "viking cruises"
+    - "explora journeys"
+    - "azamara"
+    - "american cruise lines"
+    - "pearson casting"
+    - "belinda king"
+    - "rws global"
+    - "madorma casting"
+    - "harry blumenau"
+    - "leaveyourlegasea"
+    - "nclh creative"
 
   # The geo filter deliberately fails open when it cannot parse a location.
   # Sound in principle, but 21 of 33 hits in one run were unmappable places

@@ -224,6 +224,47 @@ STATE_ABBR = {
     "florida": "fl", "texas": "tx", "illinois": "il", "georgia": "ga",
 }
 
+# Full state table, used to reject out-of-state calls whose city simply is not
+# in CITIES. Adding cities one at a time never catches up -- "NJ Local
+# Auditions", "Broward County", "in Tennessee" name no city at all, so they
+# fell through the unknown-location hatch and pinged the channel.
+US_STATES = {
+    "alabama": "al", "alaska": "ak", "arizona": "az", "arkansas": "ar",
+    "california": "ca", "colorado": "co", "connecticut": "ct",
+    "delaware": "de", "florida": "fl", "georgia": "ga", "hawaii": "hi",
+    "idaho": "id", "illinois": "il", "indiana": "in", "iowa": "ia",
+    "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me",
+    "maryland": "md", "massachusetts": "ma", "michigan": "mi",
+    "minnesota": "mn", "mississippi": "ms", "missouri": "mo",
+    "montana": "mt", "nebraska": "ne", "new hampshire": "nh",
+    "new jersey": "nj", "new mexico": "nm", "north carolina": "nc",
+    "north dakota": "nd", "ohio": "oh", "oklahoma": "ok", "oregon": "or",
+    "pennsylvania": "pa", "rhode island": "ri", "south carolina": "sc",
+    "south dakota": "sd", "tennessee": "tn", "utah": "ut", "vermont": "vt",
+    "virginia": "va", "washington": "wa", "west virginia": "wv",
+    "wisconsin": "wi", "wyoming": "wy",
+}
+_STATE_CODES = set(US_STATES.values()) | {"dc"}
+
+
+def mentioned_states(text):
+    """US state codes named anywhere in `text`.
+
+    Two-letter codes are only accepted after a comma ("Fontana, CA"), because
+    bare uppercase matching turns ordinary words into states -- IN, OR, ME, OK,
+    HI and DE all appear constantly in audition copy.
+    """
+    found = set()
+    low = (text or "").lower()
+    for name, code in US_STATES.items():
+        if re.search(r"\b" + re.escape(name) + r"\b", low):
+            found.add(code)
+    for m in re.finditer(r",\s*([A-Za-z]{2})\b", text or ""):
+        code = m.group(1).lower()
+        if code in _STATE_CODES:
+            found.add(code)
+    return found
+
 # "Los Angeles, CA" / "Anaheim, California" / "LOS ANGELES CA"
 CITY_STATE_RE = re.compile(
     r"\b([A-Z][A-Za-z\.\'\-]+(?:\s+[A-Z][A-Za-z\.\'\-]+){0,3})"
@@ -291,7 +332,8 @@ def geo_check(text, home, radius_miles, remote_text=None):
     detail page can't make an in-person call look self-submittable. Defaults to
     `text` when not supplied.
     """
-    lower = (remote_text if remote_text is not None else text or "").lower()
+    own = remote_text if remote_text is not None else (text or "")
+    lower = own.lower()
 
     places = extract_places(text)
     known = [(p, CITIES[p]) for p in places if p in CITIES]
@@ -304,10 +346,18 @@ def geo_check(text, home, radius_miles, remote_text=None):
                 best_place, best_miles = p, d
         if best_miles <= radius_miles:
             return GeoVerdict(True, "IN RADIUS", best_place, round(best_miles, 1))
-        # Named a real place and it's too far -- but remote still saves it.
-        if any(p in lower for p in REMOTE_PATTERNS):
-            return GeoVerdict(True, "REMOTE / VIDEO", best_place, round(best_miles, 1))
+        # Named a real city and it is too far. "Video submissions accepted" no
+        # longer rescues it: a self-tape for a New York play is still a New
+        # York job, and those pings are what made the channel unusable. Cruise
+        # employers are exempted later, in decide().
         return GeoVerdict(False, "OUT OF RADIUS", best_place, round(best_miles, 1))
+
+    # No city we can place. If it names a state that isn't California, that is
+    # enough to reject -- catches "NJ Local Auditions" and "in Tennessee",
+    # which name no city and used to sail through as LOCATION UNKNOWN.
+    states = mentioned_states(own)
+    if states and "ca" not in states:
+        return GeoVerdict(False, "OUT OF STATE", sorted(states)[0].upper())
 
     if any(p in lower for p in REMOTE_PATTERNS):
         return GeoVerdict(True, "REMOTE / VIDEO")
@@ -518,13 +568,16 @@ def decide(listing, cfg, home, radius):
     f = cfg["filters"]
     is_priority = "PRIORITY EMPLOYER" in verdict.tags
 
-    # A cruise line casting anywhere is news worth having: contracts are
-    # global and rolling, and most lines take video from anywhere. Without
-    # this, every Royal Caribbean / Princess / Celebrity call sourced from a
-    # UK listing board dies as OUT OF RADIUS -- 4 fetched, 0 delivered.
-    if (not geo.matched and is_priority
+    # Only cruise work ignores the radius. Contracts are global and rolling and
+    # you fly to the ship, so a Miami or London audition stop is still a job he
+    # can take. Everything else -- theme parks, regional houses -- is a job in
+    # the city it names, which is why this checks radius_exempt and not the
+    # whole priority_employers list.
+    own = listing.own_blob().lower()
+    exempt = any(t.lower() in own for t in f.get("radius_exempt", []))
+    if (not geo.matched and exempt
             and f.get("priority_employer_ignores_radius", True)):
-        geo = GeoVerdict(True, "PRIORITY EMPLOYER", geo.place, geo.miles)
+        geo = GeoVerdict(True, "CRUISE — ANY LOCATION", geo.place, geo.miles)
 
     # Narrow the fail-open hatch. An unplaceable listing still fires, but only
     # if it looks like this kind of work -- otherwise background-extra and
@@ -579,8 +632,9 @@ def mark_seen(con, listing):
 # Discord
 # --------------------------------------------------------------------------
 
-COLORS = {"PRIORITY EMPLOYER": 0xF1C40F, "IN RADIUS": 0x2ECC71,
-          "REMOTE / VIDEO": 0x3498DB, "default": 0x95A5A6}
+COLORS = {"PRIORITY EMPLOYER": 0xF1C40F, "CRUISE — ANY LOCATION": 0xF1C40F,
+          "IN RADIUS": 0x2ECC71, "REMOTE / VIDEO": 0x3498DB,
+          "default": 0x95A5A6}
 
 
 def build_embed(listing, geo, verdict):
