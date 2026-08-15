@@ -238,14 +238,16 @@ US_STATES = {
     "kansas": "ks", "kentucky": "ky", "louisiana": "la", "maine": "me",
     "maryland": "md", "massachusetts": "ma", "michigan": "mi",
     "minnesota": "mn", "mississippi": "ms", "missouri": "mo",
-    "montana": "mt", "nebraska": "ne", "new hampshire": "nh",
-    "new jersey": "nj", "new mexico": "nm", "north carolina": "nc",
-    "north dakota": "nd", "ohio": "oh", "oklahoma": "ok", "oregon": "or",
-    "pennsylvania": "pa", "rhode island": "ri", "south carolina": "sc",
-    "south dakota": "sd", "tennessee": "tn", "utah": "ut", "vermont": "vt",
+    "montana": "mt", "nebraska": "ne", "nevada": "nv",
+    "new hampshire": "nh", "new jersey": "nj", "new mexico": "nm",
+    "new york": "ny", "north carolina": "nc", "north dakota": "nd",
+    "ohio": "oh", "oklahoma": "ok", "oregon": "or", "pennsylvania": "pa",
+    "rhode island": "ri", "south carolina": "sc", "south dakota": "sd",
+    "tennessee": "tn", "texas": "tx", "utah": "ut", "vermont": "vt",
     "virginia": "va", "washington": "wa", "west virginia": "wv",
     "wisconsin": "wi", "wyoming": "wy",
 }
+assert len(US_STATES) == 50, f"state table incomplete: {len(US_STATES)}"
 _STATE_CODES = set(US_STATES.values()) | {"dc"}
 
 
@@ -301,12 +303,21 @@ def normalize_place(city, state):
 
 
 def extract_places(text):
-    """Return every 'city, st' string we can find, most specific first."""
+    """Return every 'city, st' string we can find, most specific first.
+
+    The regex happily swallows a venue name into the city group -- "Manhattan
+    Theatre Club New York, NY" came out as "theatre club new york, ny", which
+    is in no gazetteer, so a Broadway call was scored as an unknown location
+    and fired. So each match also yields its shorter trailing forms: that
+    phrase now additionally offers "new york, ny", which does resolve.
+    """
     out = []
     for m in CITY_STATE_RE.finditer(text or ""):
-        key = normalize_place(m.group(1), m.group(2))
-        if key and key not in out:
-            out.append(key)
+        words = re.sub(r"\s+", " ", m.group(1)).strip().split()
+        for i in range(len(words)):
+            key = normalize_place(" ".join(words[i:]), m.group(2))
+            if key and key not in out:
+                out.append(key)
     return out
 
 

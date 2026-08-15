@@ -138,6 +138,18 @@ filters:
     - "all female"
     - "tenor only"
     - "tenors only"
+    # Role-shaped phrasings. A live run surfaced "Female Lead Actor for
+    # Western Thriller", which named no voice type and so passed everything
+    # above it.
+    - "female lead"
+    - "female actor"
+    - "female actress"
+    - "female role"
+    - "female roles"
+    - "leading lady"
+    - "seeking actresses"
+    - actress
+    - actresses
 
   # Literal exclusivity: drop anything that does not explicitly name a
   # baritone or male vocalist. Off by default because it also drops every

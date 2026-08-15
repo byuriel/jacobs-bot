@@ -199,6 +199,33 @@ FIXTURES = [
         source="Open Auditions UK — Cruise",
         summary=("Seeking male vocalists: tenors and bari-tenors with strong "
                  "falsetto. London, UK. Paid contract."))),
+
+    # Escaped a live run. Two bugs at once: the state table was missing New
+    # York (also Nevada and Texas), and CITY_STATE_RE swallowed the venue name
+    # so the city parsed as "theatre club new york, ny", which matched no
+    # gazetteer entry. A Broadway EPA therefore read as an unknown location
+    # and fired.
+    (False, Listing(
+        title=("Faydra - NYC EPA (08.27.26) Manhattan Theatre Club "
+               "New York, NY US 08/27/2026"),
+        url="https://example.com/faydra-nyc-epa",
+        source="Playbill",
+        summary="Equity Principal Audition for singers. Paid.")),
+
+    # Same run: state table gap meant Texas and Nevada listings passed too.
+    (False, Listing(
+        title="Farmers Alley Theatre 2026-27 Season — Kalamazoo, MI EPA",
+        url="https://example.com/kalamazoo-epa",
+        source="Playbill",
+        summary="EPA for singers and actors. Michigan. Paid.")),
+
+    # Named no voice type, so nothing in voice_exclude caught it until the
+    # role-shaped phrasings were added.
+    (False, Listing(
+        title="Female Lead Actor for Western Thriller (Stage)",
+        url="https://example.com/female-lead",
+        source="Playbill",
+        summary="Seeking a female lead actor for a new stage thriller. Paid.")),
 ]
 
 
