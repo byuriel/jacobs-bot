@@ -635,9 +635,26 @@ def decide(listing, cfg, home, radius):
             and f.get("priority_employer_ignores_radius", True)):
         geo = GeoVerdict(True, "CRUISE — ANY LOCATION", geo.place, geo.miles)
 
-    # Narrow the fail-open hatch. An unplaceable listing still fires, but only
-    # if it looks like this kind of work -- otherwise background-extra and
-    # game-show casting from across the country crowds out the signal.
+    # Strict geography for everything that isn't cruise work. The listing has
+    # to actually place itself inside the radius; "we couldn't tell" is no
+    # longer good enough, because that hatch is what carried New York,
+    # Chicago, Kalamazoo and Tennessee calls into the channel.
+    if f.get("require_in_radius", True) and not exempt:
+        if geo.reason == "IN RADIUS":
+            return True, geo, verdict
+        # A named SoCal region counts, provided nothing contradicts it.
+        # Listings often say "Inland Empire" and never name a town.
+        if (any(r.lower() in own for r in f.get("socal_regions", []))
+                and not (mentioned_states(listing.own_blob()) - {"ca"})):
+            return True, GeoVerdict(True, "SOCAL REGION", geo.place,
+                                    geo.miles), verdict
+        log.debug("dropped, not in radius (%s): %s",
+                  geo.reason, listing.title[:70])
+        return False, geo, verdict
+
+    # Fail-open path, reachable only with require_in_radius disabled. An
+    # unplaceable listing still fires, but only if it looks like this kind of
+    # work -- otherwise background-extra casting crowds out the signal.
     if (geo.matched
             and geo.reason in ("UNMAPPED LOCATION", "LOCATION UNKNOWN")
             and f.get("require_signal_when_location_unknown", True)
@@ -689,8 +706,8 @@ def mark_seen(con, listing):
 # --------------------------------------------------------------------------
 
 COLORS = {"PRIORITY EMPLOYER": 0xF1C40F, "CRUISE — ANY LOCATION": 0xF1C40F,
-          "IN RADIUS": 0x2ECC71, "REMOTE / VIDEO": 0x3498DB,
-          "default": 0x95A5A6}
+          "IN RADIUS": 0x2ECC71, "SOCAL REGION": 0x2ECC71,
+          "REMOTE / VIDEO": 0x3498DB, "default": 0x95A5A6}
 
 
 def build_embed(listing, geo, verdict):

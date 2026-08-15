@@ -226,6 +226,48 @@ FIXTURES = [
         url="https://example.com/female-lead",
         source="Playbill",
         summary="Seeking a female lead actor for a new stage thriller. Paid.")),
+
+    # --- require_in_radius: strictly SoCal, cruise excepted ----------------
+
+    # Says nothing about where it is. Under the old fail-open it fired
+    # because "vocalist" is a signal term. Not cruise, so it drops.
+    (False, Listing(
+        title="Seeking vocalists for a new musical — self-tape submissions",
+        url="https://example.com/nowhere-vocal",
+        source="Playbill",
+        summary=("Seeking vocalists. Self-tape submissions accepted. Paid "
+                 "contract."))),
+
+    # Midwest, mapped city, nothing ambiguous.
+    (False, Listing(
+        title="Music Theater Heritage 2027 Season — Kansas City, MO EPA",
+        url="https://example.com/kc-epa",
+        source="Playbill",
+        summary="EPA for singers. Kansas City, MO. Paid.")),
+
+    # East Coast, named only by neighbourhood plus state code.
+    (False, Listing(
+        title="New Play Reading — Astoria, NY",
+        url="https://example.com/astoria-reading",
+        source="Playbill",
+        summary="Seeking actors and singers. Astoria, NY.")),
+
+    # Region fallback: no city resolves, but it says Inland Empire and
+    # contradicts nothing. This is where he actually lives.
+    (True, Listing(
+        title="Open call for vocalists — Inland Empire holiday revue",
+        url="https://example.com/ie-revue",
+        source="Castbee",
+        summary=("Seeking singers for a paid holiday revue across the Inland "
+                 "Empire. Paid per show."))),
+
+    # Region word present but the listing is plainly elsewhere -- "Orange
+    # County" also exists in Florida, so a contradicting state wins.
+    (False, Listing(
+        title="Orange County open call for singers",
+        url="https://example.com/oc-florida",
+        source="Castbee",
+        summary="Seeking singers. Orange County, Florida. Paid.")),
 ]
 
 

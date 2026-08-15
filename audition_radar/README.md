@@ -13,20 +13,35 @@ on his map. Norwegian pays vocalists $1,300/week and casts by emailed reel — n
 geography at all. Royal Caribbean takes online profile submissions from anywhere.
 A radius filter alone throws those in the trash.
 
-So a listing fires if **any** of these is true:
+**This has been reversed since.** The filter used to fail open — anything it
+couldn't place fired anyway, on the reasoning that a false positive costs three
+seconds of glancing at a phone while a false negative costs a booking. In practice
+that hatch carried New York ECCs, Chicago and Kansas City EPAs, Kalamazoo,
+Tennessee background-extra casting and a Price Is Right contestant search into the
+channel — 21 of 33 hits in one run were unplaceable listings thousands of miles
+away. Noise on that scale costs a booking too, just by getting the channel muted.
 
-| Verdict | Meaning | Color in Discord |
+So a listing now fires only if:
+
+| Verdict | Meaning | Colour |
 |---|---|---|
 | `IN RADIUS` | Names a city within 100 mi of Fontana | Green |
-| `REMOTE / VIDEO` | Self-tape, reel submission, online profile — location irrelevant | Blue |
-| `LOCATION UNKNOWN` / `UNMAPPED` | Couldn't place it. Fires anyway. | Grey |
-| `PRIORITY EMPLOYER` | Royal Caribbean, NCLH, Disney, Universal, etc. | **Gold** |
+| `SOCAL REGION` | Names a region (Inland Empire, Orange County…) and no contradicting state | Green |
+| `CRUISE — ANY LOCATION` | Cruise line or cruise casting agency, anywhere on earth | **Gold** |
 
-That last grey case is deliberate. A false positive costs three seconds of glancing
-at a phone. A false negative costs a booking. The filter fails open.
+Everything else is dropped: out-of-state, out-of-radius, unplaceable, and
+self-tape calls that state no location.
 
-Anything that names a real city outside 100 miles **and** requires in-person attendance
-gets dropped silently.
+**Cruise is the deliberate exception**, and it's the point of the tool. Contracts
+are global and rolling and you fly to the ship, so a Royal Caribbean call whose
+audition stop is in London or Miami is still a job he can take. That exemption
+reads `radius_exempt`, *not* the full `priority_employers` list — an earlier
+version exempted every priority employer and a Six Flags job in New Jersey
+arrived gold-bordered. A theme park job is a job in that park's city.
+
+The cost of strictness is real: a genuine Fontana call that names no city at all
+now drops. `socal_regions` is what keeps that cost small. Set
+`require_in_radius: false` to restore the original fail-open behaviour.
 
 ---
 

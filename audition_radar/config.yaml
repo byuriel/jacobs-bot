@@ -264,6 +264,36 @@ filters:
   # signal_terms below. Set false to restore the original fail-open behaviour.
   require_signal_when_location_unknown: true
 
+  # Strict geography. A listing must name a city inside radius_miles, or a
+  # SoCal region below. Everything else is dropped: unparseable locations,
+  # self-tape calls that state no location, and every East Coast and Midwest
+  # listing. This reverses the original fail-open design on purpose -- the
+  # channel was carrying New York, Chicago, Kalamazoo and Tennessee calls.
+  #
+  # The one exception is radius_exempt (cruise), which stays global by
+  # design; empty that list to make the geofence absolute.
+  #
+  # The cost is real: a genuine Fontana call that names no city at all now
+  # drops. socal_regions below is what keeps that cost small.
+  require_in_radius: true
+
+  # Counted as in-area when no city resolves. Listings routinely say "Inland
+  # Empire" or "Orange County" and never name a town.
+  socal_regions:
+    - "southern california"
+    - "socal"
+    - "inland empire"
+    - "orange county"
+    - "los angeles area"
+    - "greater los angeles"
+    - "los angeles county"
+    - "san bernardino county"
+    - "riverside county"
+    - "san gabriel valley"
+    - "san fernando valley"
+    - "high desert"
+    - "coachella valley"
+
   signal_terms:
     - vocalist
     - vocalists
