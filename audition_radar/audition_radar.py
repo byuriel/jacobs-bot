@@ -99,6 +99,8 @@ CITIES = {
     "temecula, ca": (33.4936, -117.1484),
     "san bernardino, ca": (34.1083, -117.2898),
     "redlands, ca": (34.0556, -117.1825),
+    "rialto, ca": (34.1064, -117.3703),
+    "colton, ca": (34.0739, -117.3136),
     "rancho cucamonga, ca": (34.1064, -117.5931),
     "ontario, ca": (34.0633, -117.6509),
     "upland, ca": (34.0975, -117.6484),
@@ -548,6 +550,39 @@ def enrich(listing, cfg):
     return listing
 
 
+def _word_hits(terms, text):
+    """Whole-word matches only.
+
+    Substring matching is wrong here and quietly so: "alto" sits inside
+    Rialto (8 mi from Fontana) and "bass" inside bassist.
+    """
+    low = (text or "").lower()
+    return [t for t in terms
+            if re.search(r"(?<!\w)" + re.escape(t.lower()) + r"(?!\w)", low)]
+
+
+def voice_check(text, cfg):
+    """Is this listing plausibly for a male baritone?
+
+    Returns (keep, matched_terms). Order matters: a listing naming his voice
+    type is kept before voice_exclude is ever consulted, so "Tenors and
+    Bari-tenors" survives even though a bare tenor call would not.
+    """
+    f = cfg["filters"]
+    wanted = _word_hits(f.get("voice_match", []), text)
+    if wanted:
+        return True, wanted
+
+    blocked = _word_hits(f.get("voice_exclude", []), text)
+    if blocked:
+        return False, blocked
+
+    # Nothing stated. "Seeking vocalists" is the overwhelming majority of real
+    # listings and a baritone can audition for all of them, so this fires
+    # unless the operator has explicitly asked for literal exclusivity.
+    return (not f.get("require_voice_match", False)), []
+
+
 def decide(listing, cfg, home, radius):
     """The whole keep/drop decision for one listing.
 
@@ -561,6 +596,16 @@ def decide(listing, cfg, home, radius):
     verdict = relevance_check(listing.blob(), cfg)
     if not verdict.keep:
         return False, None, verdict
+
+    # Judged on the listing's own text, not the enriched page: a Playbill
+    # sidebar advertising a soprano call must not veto this listing.
+    voice_ok, voice_hits = voice_check(listing.own_blob(), cfg)
+    if not voice_ok:
+        log.debug("dropped on voice type: %s", listing.title[:70])
+        return False, None, verdict
+    if voice_hits:
+        verdict.tags.append("VOICE MATCH")
+        verdict.score += 5
 
     geo = geo_check(listing.blob(), home, radius,
                     remote_text=listing.own_blob())

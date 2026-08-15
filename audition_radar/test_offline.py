@@ -164,12 +164,41 @@ FIXTURES = [
                  "submission accepted."))),
 
     # But a cruise call with no city still fires, wherever it is run from.
+    # Also the load-bearing voice-type case: it says "vocalists" and never a
+    # voice type, which is how most real cruise listings read. A baritone can
+    # audition for it, so it must survive the voice filter.
     (True, Listing(
         title="Cruise ship vocalists wanted — production show cast",
         url="https://example.com/generic-cruise",
         source="Entertainers Worldwide — Singer/Cruise",
         summary=("Seeking cruise ship vocalists for production shows. "
                  "Contracts 6 months. Paid per week."))),
+
+    # Explicitly someone else's call -> dropped.
+    (False, Listing(
+        title="Seeking Sopranos and Mezzos — female presenting ensemble",
+        url="https://example.com/soprano-call",
+        source="Playbill",
+        summary=("Seeking sopranos and mezzo-sopranos, female presenting, "
+                 "for a new musical. Los Angeles, CA. Paid."))),
+
+    # "alto" is a substring of Rialto, a real city 8 mi from Fontana. If voice
+    # matching ever stops being whole-word, this listing disappears and the
+    # failure is silent.
+    (True, Listing(
+        title="Vocalist auditions — Rialto, CA",
+        url="https://example.com/rialto-vocal",
+        source="Playbill",
+        summary="Seeking vocalists for a paid holiday revue. Rialto, CA.")),
+
+    # A baritone-named call is kept even though the same text says "tenor" --
+    # voice_match is consulted before voice_exclude.
+    (True, Listing(
+        title="Princess Cruises — Tenors and Bari-tenors",
+        url="https://example.com/princess-baritone",
+        source="Open Auditions UK — Cruise",
+        summary=("Seeking male vocalists: tenors and bari-tenors with strong "
+                 "falsetto. London, UK. Paid contract."))),
 ]
 
 

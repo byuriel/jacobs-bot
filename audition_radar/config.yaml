@@ -79,6 +79,72 @@ filters:
     - "video submission"
     - "self-tape"
 
+  # --- Voice type: male baritone --------------------------------------------
+  #
+  # Read this before tightening it. Most listings never state a voice type --
+  # "seeking vocalists" is the norm, and every one of those calls is open to a
+  # baritone. Requiring the word "baritone" would drop the Royal Caribbean,
+  # Princess and Celebrity calls this tool exists to catch, because they
+  # advertise as "Vocalists & Dancers". So:
+  #
+  #   names his voice type      -> keep, tagged VOICE MATCH, scored up
+  #   explicitly someone else   -> dropped
+  #   says nothing              -> kept (a baritone can walk into that room)
+  #
+  # Matching is whole-word, which matters more than it looks: "alto" is a
+  # substring of Rialto, eight miles from Fontana.
+  voice_match:
+    - baritone
+    - baritones
+    - "bari-tenor"
+    - "bari-tenors"
+    - baritenor
+    - "bass-baritone"
+    - bass
+    - "male presenting"
+    - "male-presenting"
+    - "male identifying"
+    - "male-identifying"
+    - "male vocalist"
+    - "male vocalists"
+    - "male singer"
+    - "male singers"
+    - "seeking men"
+    - men
+
+  # Checked only when nothing in voice_match hit, so "Tenors and Bari-tenors"
+  # is safe -- the bari-tenor match wins before any of this is consulted.
+  voice_exclude:
+    - soprano
+    - sopranos
+    - mezzo
+    - "mezzo-soprano"
+    - alto
+    - altos
+    - contralto
+    - countertenor
+    - treble
+    - "boy soprano"
+    - "female only"
+    - "females only"
+    - "women only"
+    - "seeking women"
+    - "seeking females"
+    - "female presenting"
+    - "female-presenting"
+    - "female identifying"
+    - "female-identifying"
+    - "must be female"
+    - "all female"
+    - "tenor only"
+    - "tenors only"
+
+  # Literal exclusivity: drop anything that does not explicitly name a
+  # baritone or male vocalist. Off by default because it also drops every
+  # "seeking vocalists" cruise call, which is most of them. Turn it on only if
+  # the channel is too busy and you would rather miss calls than skim them.
+  require_voice_match: false
+
   # Gold border in Discord + big score bump. These are the payers.
   priority_employers:
     - "royal caribbean"
