@@ -21,27 +21,47 @@ Tennessee background-extra casting and a Price Is Right contestant search into t
 channel — 21 of 33 hits in one run were unplaceable listings thousands of miles
 away. Noise on that scale costs a booking too, just by getting the channel muted.
 
-So a listing now fires only if:
+## Two gates, ANDed. Nothing else passes.
 
-| Verdict | Meaning | Colour |
-|---|---|---|
-| `IN RADIUS` | Names a city within 100 mi of Fontana | Green |
-| `SOCAL REGION` | Names a region (Inland Empire, Orange County…) and no contradicting state | Green |
-| `CRUISE — ANY LOCATION` | Cruise line or cruise casting agency, anywhere on earth | **Gold** |
+A listing reaches Discord only if **both** are true:
 
-Everything else is dropped: out-of-state, out-of-radius, unplaceable, and
-self-tape calls that state no location.
+**Gate 1 — California.** It resolves to `IN RADIUS` (a city within 100 mi of
+Fontana) or `SOCAL REGION` (names Inland Empire, Orange County, San Gabriel
+Valley… with no contradicting state). `IN RADIUS` provably means California:
+all 63 mapped cities inside 100 mi are CA, and the nearest out-of-state city,
+Las Vegas, is 193 mi away. `test_offline.py` asserts this, so adding a
+Nevada or Arizona city inside the radius fails the suite.
 
-**Cruise is the deliberate exception**, and it's the point of the tool. Contracts
-are global and rolling and you fly to the ship, so a Royal Caribbean call whose
-audition stop is in London or Miami is still a job he can take. That exemption
-reads `radius_exempt`, *not* the full `priority_employers` list — an earlier
-version exempted every priority employer and a Six Flags job in New Jersey
-arrived gold-bordered. A theme park job is a job in that park's city.
+**Gate 2 — his voice type.** The text must name a baritone / bass-baritone /
+male vocalist. `voice_match` is checked *before* `voice_exclude`, so "Tenors
+and Bari-tenors" survives while a tenor-only or soprano call does not.
 
-The cost of strictness is real: a genuine Fontana call that names no city at all
-now drops. `socal_regions` is what keeps that cost small. Set
-`require_in_radius: false` to restore the original fail-open behaviour.
+Everything else is dropped: out-of-state, out-of-radius, unplaceable,
+self-tape calls that state no location, and any listing that never says what
+voice it wants.
+
+### What this costs, stated plainly
+
+**Cruise no longer gets a worldwide pass.** `radius_exempt` still exists and
+still lists the lines and their casting agencies, but `california_only`
+overrides it — a Royal Caribbean call in London or Miami is now dropped like
+any other out-of-state listing. Only cruise auditions held in Southern
+California survive, which is a real narrowing given that Royal Caribbean,
+Princess and Celebrity tour their calls.
+
+**Unspecified vocalist calls are gone.** Most listings never state a voice
+type — "seeking vocalists" is the norm — and a baritone can audition for all
+of them. `require_voice_match: true` drops every one. Measured: of the four
+California fixtures that used to fire, three are now rejected purely for not
+naming a voice.
+
+Expect a quiet channel. That is the requested trade: fewer misses to skim,
+more bookings never seen. Two lines in `config.yaml` reverse it —
+
+```yaml
+california_only: false      # gives cruise its worldwide exemption back
+require_voice_match: false  # lets "seeking vocalists" calls through again
+```
 
 ---
 

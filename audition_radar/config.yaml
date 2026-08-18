@@ -155,7 +155,7 @@ filters:
   # baritone or male vocalist. Off by default because it also drops every
   # "seeking vocalists" cruise call, which is most of them. Turn it on only if
   # the channel is too busy and you would rather miss calls than skim them.
-  require_voice_match: false
+  require_voice_match: true
 
   # Gold border in Discord + big score bump. These are the payers.
   priority_employers:
@@ -276,6 +276,14 @@ filters:
   # The cost is real: a genuine Fontana call that names no city at all now
   # drops. socal_regions below is what keeps that cost small.
   require_in_radius: true
+
+  # MASTER GATE. Nothing reaches Discord unless it resolves to a California
+  # city inside radius_miles, or a named SoCal region with no contradicting
+  # state. This overrides radius_exempt, so cruise no longer gets a global
+  # pass either -- a Royal Caribbean call in London is now dropped like any
+  # other out-of-state listing. Set false to give cruise its worldwide
+  # exemption back.
+  california_only: true
 
   # Counted as in-area when no city resolves. Listings routinely say "Inland
   # Empire" or "Orange County" and never name a town.

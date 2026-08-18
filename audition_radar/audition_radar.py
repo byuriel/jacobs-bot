@@ -635,27 +635,49 @@ def decide(listing, cfg, home, radius):
             and f.get("priority_employer_ignores_radius", True)):
         geo = GeoVerdict(True, "CRUISE — ANY LOCATION", geo.place, geo.miles)
 
-    # Strict geography for everything that isn't cruise work. The listing has
-    # to actually place itself inside the radius; "we couldn't tell" is no
-    # longer good enough, because that hatch is what carried New York,
-    # Chicago, Kalamazoo and Tennessee calls into the channel.
-    if f.get("require_in_radius", True) and not exempt:
-        if geo.reason == "IN RADIUS":
-            return True, geo, verdict
-        # A named SoCal region counts, provided nothing contradicts it.
-        # Listings often say "Inland Empire" and never name a town.
-        if (any(r.lower() in own for r in f.get("socal_regions", []))
-                and not (mentioned_states(listing.own_blob()) - {"ca"})):
-            return True, GeoVerdict(True, "SOCAL REGION", geo.place,
-                                    geo.miles), verdict
-        log.debug("dropped, not in radius (%s): %s",
-                  geo.reason, listing.title[:70])
+    # A named SoCal region counts as in-area when no city resolves, provided
+    # nothing contradicts it -- listings often say "Inland Empire" and never
+    # name a town. Promoted before the gates so the gates stay simple.
+    if (geo.reason != "IN RADIUS"
+            and any(r.lower() in own for r in f.get("socal_regions", []))
+            and not (mentioned_states(listing.own_blob()) - {"ca"})):
+        geo = GeoVerdict(True, "SOCAL REGION", geo.place, geo.miles)
+
+    # ---------------------------------------------------------------- GATE 1
+    # California. One check, no exceptions -- not even cruise. IN RADIUS is
+    # provably Californian: all 63 mapped cities within 100 mi are CA, and the
+    # nearest out-of-state city, Las Vegas, is 193 mi out. SOCAL REGION is a
+    # named California region with no contradicting state.
+    #
+    # This deliberately overrides radius_exempt. Cruise work used to bypass
+    # geography entirely, which is correct for chasing contracts but not for
+    # "only California" -- a Royal Caribbean call in London was passing. Set
+    # california_only: false to give cruise its global pass back.
+    if f.get("california_only", True):
+        if geo.reason not in ("IN RADIUS", "SOCAL REGION"):
+            log.debug("gate 1 (California) dropped [%s]: %s",
+                      geo.reason, listing.title[:70])
+            return False, geo, verdict
+
+    elif f.get("require_in_radius", True) and not exempt:
+        if geo.reason not in ("IN RADIUS", "SOCAL REGION"):
+            log.debug("dropped, not in radius (%s): %s",
+                      geo.reason, listing.title[:70])
+            return False, geo, verdict
+
+    # ---------------------------------------------------------------- GATE 2
+    # Voice type. voice_check already refuses a listing that names someone
+    # else's voice; this refuses one that names no voice type at all, which is
+    # what require_voice_match means. Both gates must pass -- they are ANDed,
+    # never alternatives.
+    if f.get("require_voice_match", False) and not voice_hits:
+        log.debug("gate 2 (baritone) dropped, no voice stated: %s",
+                  listing.title[:70])
         return False, geo, verdict
 
-    # Fail-open path, reachable only with require_in_radius disabled. An
-    # unplaceable listing still fires, but only if it looks like this kind of
-    # work -- otherwise background-extra casting crowds out the signal.
-    if (geo.matched
+    # Fail-open path, reachable only with both strict flags disabled.
+    if (not f.get("california_only", True)
+            and geo.matched
             and geo.reason in ("UNMAPPED LOCATION", "LOCATION UNKNOWN")
             and f.get("require_signal_when_location_unknown", True)
             and not is_priority):
